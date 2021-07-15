@@ -7,8 +7,9 @@ import os
 import random
 
 import numpy as np
-from keras import backend as K
-from keras.models import load_model
+import tensorflow as tf
+import tensorflow.keras.backend as K
+from tensorflow.keras.models import load_model
 from PIL import Image, ImageDraw, ImageFont
 
 from yad2k.models.keras_yolo import yolo_eval, yolo_head
@@ -52,6 +53,7 @@ parser.add_argument(
     help='threshold for non max suppression IOU, default .5',
     default=.5)
 
+tf.compat.v1.disable_eager_execution()
 
 def _main(args):
     model_path = os.path.expanduser(args.model_path)
@@ -65,7 +67,7 @@ def _main(args):
         print('Creating output path {}'.format(output_path))
         os.mkdir(output_path)
 
-    sess = K.get_session()  # TODO: Remove dependence on Tensorflow session.
+    sess = tf.compat.v1.keras.backend.get_session()
 
     with open(classes_path) as f:
         class_names = f.readlines()
@@ -90,7 +92,7 @@ def _main(args):
     print('{} model, anchors, and classes loaded.'.format(model_path))
 
     # Check if model is fully convolutional, assuming channel last order.
-    model_image_size = yolo_model.layers[0].input_shape[1:3]
+    model_image_size = yolo_model.layers[0].input_shape[0][1:3]
     is_fixed_size = model_image_size != (None, None)
 
     # Generate colors for drawing bounding boxes.

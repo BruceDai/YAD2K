@@ -23,6 +23,7 @@ voc_classes = [
     "pottedplant", "sheep", "sofa", "train", "tvmonitor"
 ]
 
+tf.compat.v1.disable_eager_execution()
 
 def space_to_depth_x2(x):
     """Thin wrapper for Tensorflow space_to_depth with block_size=2."""
@@ -340,7 +341,7 @@ def yolo_eval(yolo_outputs,
 
     # TODO: Something must be done about this ugly hack!
     max_boxes_tensor = K.variable(max_boxes, dtype='int32')
-    K.get_session().run(tf.variables_initializer([max_boxes_tensor]))
+    tf.compat.v1.keras.backend.get_session().run(tf.compat.v1.variables_initializer([max_boxes_tensor]))
     nms_index = tf.image.non_max_suppression(
         boxes, scores, max_boxes_tensor, iou_threshold=iou_threshold)
     boxes = K.gather(boxes, nms_index)
