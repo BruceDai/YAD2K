@@ -125,10 +125,12 @@ def _main(args):
             continue
 
         image = Image.open(os.path.join(test_path, image_file))
+        xname = os.path.splitext(os.path.basename(image_file))[0]
         if is_fixed_size:  # TODO: When resizing we can use minibatch input.
             resized_image = image.resize(
                 tuple(reversed(model_image_size)), Image.BICUBIC)
             image_data = np.array(resized_image, dtype='float32')
+            xdata = image_data.reshape((1, 416, 416, 3))
         else:
             # Due to skip connection + max pooling in YOLO_v2, inputs must have
             # width and height as multiples of 32.
@@ -140,55 +142,57 @@ def _main(args):
 
         image_data /= 255.
         image_data = np.expand_dims(image_data, 0)  # Add batch dimension.
+        np.save('%s_input_0' % xname, xdata)
 
-        out_boxes, out_scores, out_classes = sess.run(
-            [boxes, scores, classes],
+        y = sess.run(
+            yolo_model.output,
             feed_dict={
                 yolo_model.input: image_data,
                 input_image_shape: [image.size[1], image.size[0]],
                 K.learning_phase(): 0
             })
-        print('Found {} boxes for {}'.format(len(out_boxes), image_file))
+        np.save('%s_output_0' % xname, y)
+        # print('Found {} boxes for {}'.format(len(out_boxes), image_file))
 
-        font = ImageFont.truetype(
-            font='font/FiraMono-Medium.otf',
-            size=np.floor(3e-2 * image.size[1] + 0.5).astype('int32'))
-        thickness = (image.size[0] + image.size[1]) // 300
+        # font = ImageFont.truetype(
+        #     font='font/FiraMono-Medium.otf',
+        #     size=np.floor(3e-2 * image.size[1] + 0.5).astype('int32'))
+        # thickness = (image.size[0] + image.size[1]) // 300
 
-        for i, c in reversed(list(enumerate(out_classes))):
-            predicted_class = class_names[c]
-            box = out_boxes[i]
-            score = out_scores[i]
+        # for i, c in reversed(list(enumerate(out_classes))):
+        #     predicted_class = class_names[c]
+        #     box = out_boxes[i]
+        #     score = out_scores[i]
 
-            label = '{} {:.2f}'.format(predicted_class, score)
+        #     label = '{} {:.2f}'.format(predicted_class, score)
 
-            draw = ImageDraw.Draw(image)
-            label_size = draw.textsize(label, font)
+        #     draw = ImageDraw.Draw(image)
+        #     label_size = draw.textsize(label, font)
 
-            top, left, bottom, right = box
-            top = max(0, np.floor(top + 0.5).astype('int32'))
-            left = max(0, np.floor(left + 0.5).astype('int32'))
-            bottom = min(image.size[1], np.floor(bottom + 0.5).astype('int32'))
-            right = min(image.size[0], np.floor(right + 0.5).astype('int32'))
-            print(label, (left, top), (right, bottom))
+        #     top, left, bottom, right = box
+        #     top = max(0, np.floor(top + 0.5).astype('int32'))
+        #     left = max(0, np.floor(left + 0.5).astype('int32'))
+        #     bottom = min(image.size[1], np.floor(bottom + 0.5).astype('int32'))
+        #     right = min(image.size[0], np.floor(right + 0.5).astype('int32'))
+        #     print(label, (left, top), (right, bottom))
 
-            if top - label_size[1] >= 0:
-                text_origin = np.array([left, top - label_size[1]])
-            else:
-                text_origin = np.array([left, top + 1])
+        #     if top - label_size[1] >= 0:
+        #         text_origin = np.array([left, top - label_size[1]])
+        #     else:
+        #         text_origin = np.array([left, top + 1])
 
-            # My kingdom for a good redistributable image drawing library.
-            for i in range(thickness):
-                draw.rectangle(
-                    [left + i, top + i, right - i, bottom - i],
-                    outline=colors[c])
-            draw.rectangle(
-                [tuple(text_origin), tuple(text_origin + label_size)],
-                fill=colors[c])
-            draw.text(text_origin, label, fill=(0, 0, 0), font=font)
-            del draw
+        #     # My kingdom for a good redistributable image drawing library.
+        #     for i in range(thickness):
+        #         draw.rectangle(
+        #             [left + i, top + i, right - i, bottom - i],
+        #             outline=colors[c])
+        #     draw.rectangle(
+        #         [tuple(text_origin), tuple(text_origin + label_size)],
+        #         fill=colors[c])
+        #     draw.text(text_origin, label, fill=(0, 0, 0), font=font)
+        #     del draw
 
-        image.save(os.path.join(output_path, image_file), quality=90)
+        # image.save(os.path.join(output_path, image_file), quality=90)
     sess.close()
 
 
